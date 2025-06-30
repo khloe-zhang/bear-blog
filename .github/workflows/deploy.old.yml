@@ -1,0 +1,78 @@
+name: Deploy to AWS EC2  # 定义 GitHub Actions 工作流名称
+
+on:
+  push:
+    branches:
+      - main  # 监听 main 分支的 push 事件
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest  # 选择 GitHub 提供的 Ubuntu 服务器运行任务
+
+    steps:
+    - name: Checkout code  # 第一步：从 GitHub 拉取最新代码
+      uses: actions/checkout@v3
+
+    - name: Get GitHub Actions IP (Optional)
+      id: ip
+      run: |
+        echo "Fetching GitHub Actions public IP..."
+        echo "GITHUB_ACTIONS_IP=$(curl -s https://checkip.amazonaws.com)/32" >> $GITHUB_ENV
+
+    - name: Configure AWS credentials
+      run: |
+        aws configure set aws_access_key_id ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws configure set aws_secret_access_key ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws configure set region ${{ secrets.AWS_REGION }}
+
+    - name: Temporarily Open SSH for GitHub Actions
+      run: |
+        echo "Opening SSH access for GitHub Actions IP: $GITHUB_ACTIONS_IP"
+        aws ec2 authorize-security-group-ingress \
+          --group-id ${{ secrets.AWS_SECURITY_GROUP_ID }} \
+          --protocol tcp \
+          --port 22 \
+          --cidr $GITHUB_ACTIONS_IP \
+          --region ${{ secrets.AWS_REGION }}
+
+    # 设置 Docker 构建环境
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v1
+
+    # 登录 Docker Hub
+    - name: Login to Docker Hub
+      run: echo "${{ secrets.DOCKER_HUB_PASSWORD }}" | docker login -u "${{ secrets.DOCKER_HUB_USERNAME }}" --password-stdin
+
+    # 构建并推送 Flask 镜像到 Docker Hub
+    - name: Build and Push Flask Docker Image
+      run: |
+        docker build -t ${{ secrets.DOCKER_HUB_USERNAME }}/flask-app:latest .
+        docker push ${{ secrets.DOCKER_HUB_USERNAME }}/flask-app:latest
+
+        
+    - name: SSH into EC2 & Deploy  # 第二步：使用 SSH 连接 EC2 并执行部署
+      uses: appleboy/ssh-action@master
+      with:
+        host: ${{ secrets.EC2_HOST }}   # EC2 服务器的公有 IP（存储在 GitHub Secrets）
+        username: ubuntu                # EC2 登录用户名
+        key: ${{ secrets.EC2_KEY }}     # SSH 私钥（存储在 GitHub Secrets）
+        script: |
+          echo "${{ secrets.DOCKER_HUB_PASSWORD }}" | docker login -u "${{ secrets.DOCKER_HUB_USERNAME }}" --password-stdin
+          cd ~/myapp                      # 进入 Flask 项目目录
+          docker-compose pull  # 拉取最新 Flask 镜像
+
+          # 确保 MySQL 数据目录已挂载到 EBS
+          sudo mkdir -p /mnt/ebs-mysql/mysql
+          sudo chown -R 999:999 /mnt/ebs-mysql/mysql
+          sudo chmod -R 755 /mnt/ebs-mysql/mysql
+
+          docker-compose up -d  # 运行 Flask + MySQL
+
+    - name: Close SSH Access after Deployment
+      run: |
+        aws ec2 revoke-security-group-ingress \
+          --group-id ${{ secrets.AWS_SECURITY_GROUP_ID }} \
+          --protocol tcp \
+          --port 22 \
+          --cidr $GITHUB_ACTIONS_IP \
+          --region ${{ secrets.AWS_REGION }}

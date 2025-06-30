@@ -1,0 +1,18 @@
+version: "3.8"
+
+services:
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.hugo
+    ports:
+      - "80:80"
+    container_name: hugo_frontend
+
+  # backend:
+  #   build:
+  #     context: .
+  #     dockerfile: Dockerfile.flask
+  #   ports:
+  #     - "5000:5000"
+  #   container_name: flask_backend
