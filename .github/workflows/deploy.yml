@@ -19,6 +19,7 @@ jobs:
           hugo-version: '0.147.9' 
 
       - name: Build Hugo site
+        working-directory: frontend
         run: hugo -F --cleanDestinationDir
 
       - name: Configure AWS credentials
