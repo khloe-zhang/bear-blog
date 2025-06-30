@@ -1,30 +1,37 @@
-name: Deploy Hugo to GitHub Pages
+name: Deploy Hugo site to S3
 
 on:
   push:
     branches:
-      - main  # 或者你使用的其他分支
+      - main
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
+      - name: Checkout repo
         uses: actions/checkout@v3
 
       - name: Setup Hugo
         uses: peaceiris/actions-hugo@v2
         with:
-          hugo-version: '0.111.3'  # 根据你项目的需要修改
+          hugo-version: '0.147.9' 
 
       - name: Build Hugo site
-        working-directory: frontend
-        #run: hugo -F --cleanDestinationDir
         run: hugo -F --cleanDestinationDir
 
-      - name: Deploy to GitHub Pages
-        uses: peaceiris/actions-gh-pages@v3
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: frontend/public
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Upload to S3
+        run: |
+          aws s3 sync public/ s3://${{ secrets.S3_BUCKET }} --delete
+
+      - name: (Optional) Invalidate CloudFront cache
+        run: |
+          aws cloudfront create-invalidation --distribution-id ${{ secrets.DISTRIBUTION_ID }} --paths "/*"
