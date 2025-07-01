@@ -74,7 +74,7 @@ params:
   author: Bear
   # author: ["Me", "You"] # multiple authors
 
-  defaultTheme: auto  # defaultTheme: light or  dark
+  defaultTheme: light  # defaultTheme: light or  dark or auto
   disableThemeToggle: false
   DateFormat: "2006-01-02 15:04"
   enableGitInfo: true # 自动获取时间
