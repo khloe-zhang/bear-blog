@@ -178,6 +178,15 @@ img:active {
 
 .post-content table th {
     font-size: 18px;
+    font-weight: bold;
+    /* border-right: 1px solid rgba(180, 181, 182, 0.8); 这是稍微深一点的灰色 */
+    /* rgb(5 10 15 / 5%); 这个是稍微浅一点的灰色，跟自带表格的下框线一个颜色，有点太淡了 */
+    border: 1px solid rgba(180, 181, 182, 0.8); 
+}
+
+.post-content table td {
+    font-size: 18px;
+    border: 1px solid rgba(180, 181, 182, 0.8);
 }
 
 /*首页button*/
