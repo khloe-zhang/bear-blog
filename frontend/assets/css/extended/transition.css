@@ -120,6 +120,130 @@ button#theme-toggle {
 #searchbox input:hover {
 }
 
+/* 输入框和按钮的包装容器 */
+.input-with-button {
+    position: relative; /* 为绝对定位的按钮提供参考 */
+    display: flex;
+    width: 100%; /* 与搜索框同宽 */
+    max-width: 800px; /* 限制最大宽度，与原有设计保持一致 */
+    margin: 0 auto; /* 居中显示 */
+    margin-top: 0.5rem;
+}
+
+/* 输入框样式调整 */
+#question-input {
+    flex: 1; /* 占据剩余所有空间 */
+    padding-right: 70px; /* 为按钮预留空间，防止文字被遮挡 */
+    padding: 10px 70px 12px 15px;
+    border: 2px solid;
+    border-color: var(--tertiary);
+    border-radius: 12px; /* 圆角设计，与搜索框风格一致 */
+    font-size: 16px;
+    box-sizing: border-box; /* 确保padding不会影响总宽度 */
+    resize: none;
+    overflow-y: hidden;
+    width: 100%;
+    transition: height 0.2s ease;
+}
+
+/* 内嵌搜索按钮样式 */
+.inline-button {
+    position: absolute;
+    right: 4px; /* 距离右侧4px */
+    bottom: 4px; /* 距离顶部4px */
+    height: 36px; /* 比输入框稍矮 */
+    padding: 0 16px;
+    background: var(--primary); /* 使用你主题中的变量 */
+    border: none;
+    border-radius: 20px; /* 稍小的圆角 */
+    color: white;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+
+/* 按钮悬停效果 */
+.inline-button:hover {
+    background: var(--primary); /* 使用主题的主色变量 */
+    transform: scale(1.02);
+}
+
+.inline-button:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+}
+
+/* API响应容器样式 */
+.response-container {
+    margin-top: 2rem;
+    border: 2px solid;
+    border-color: var(--tertiary);
+    border-radius: 12px;
+    background-color: #f8f9fa;
+    overflow: hidden;
+    animation: fadeIn 0.3s ease;
+}
+
+.response-header {
+    background-color: var(--tertiary);
+    color: white;
+    padding: 12px 20px;
+    font-weight: 600;
+}
+
+.response-content {
+    padding: 20px;
+    min-height: 100px;
+    line-height: 1.6;
+    color: #333;
+}
+
+/* 加载状态样式 */
+.response-content.loading {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    color: #666;
+}
+
+/* 动画效果 */
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.user-message {
+    background-color: #e3f2fd;
+    padding: 10px 15px;
+    margin: 8px 0;
+    border-radius: 12px;
+    border-bottom-left-radius: 4px;
+}
+
+.ai-message {
+    background-color: #f5f5f5;
+    padding: 10px 15px;
+    margin: 8px 0;
+    border-radius: 12px;
+    border-bottom-right-radius: 4px;
+}
+
+.loading {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100px;
+    color: #666;
+}
+
+.error {
+    color: #d32f2f;
+    padding: 20px;
+    text-align: center;
+}
+
+
 /*最顶级页面*/
 .list {
 }
@@ -207,6 +331,19 @@ button#theme-toggle {
     box-shadow: 0px 2px 4px rgb(5 10 15 / 5%), 0px 7px 13px -3px rgb(5 10 15 / 30%);
 }
 
+/* AI按钮本身样式 - 继承原有.button样式并增加宽度 */
+.ai-button {
+    background: var(--entry);
+
+    min-width: 200px; /* 设置更宽的最小宽度 */
+    text-align: center; /* 文字居中 */
+    /* 继承原有.button的所有过渡效果和阴影 */
+    margin: 8px;
+    padding: 6px;
+    box-shadow: 0px 2px 4px rgb(5 10 15 / 5%), 0px 7px 13px -3px rgb(5 10 15 / 30%);
+
+}
+
 .button:hover {
     /*-webkit-transform: scale(1.1);*/
     /*-moz-transform: scale(1.1);*/
@@ -234,4 +371,21 @@ button#theme-toggle {
 
     transition: box-shadow 0.4s ease, transform 0.4s ease;
     box-shadow: 0px 4px 8px rgb(5 10 15 / 5%), 0px 7px 13px -3px rgb(5 10 15 / 30%);
+}
+
+.ai-button:hover {
+    /*-webkit-transform: scale(1.1);*/
+    /*-moz-transform: scale(1.1);*/
+    /*-ms-transform: scale(1.1);*/
+    /*-o-transform: scale(1.1);*/
+
+    /*transform: scale(1.1);*/
+
+    transition: box-shadow 0.4s ease, transform 0.4s ease;
+    box-shadow: 0px 4px 8px rgb(5 10 15 / 5%), 0px 7px 13px -3px rgb(5 10 15 / 30%);
+    /*-webkit-transform: translateY(-4px);*/
+    /*-moz-transform: translateY(-4px);*/
+    /*-ms-transform: translateY(-4px);*/
+    /*-o-transform: translateY(-4px);*/
+    /*transform: translateY(-4px);*/
 }

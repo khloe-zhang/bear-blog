@@ -1,0 +1,165 @@
+{{- define "main" }}
+
+
+<header class="page-header">
+    <h1>{{- (printf "%s&nbsp;" .Title ) | htmlUnescape -}}
+    </h1>
+    {{- if .Description }}
+    <div class="post-description">
+        {{ .Description }}
+    </div>
+    {{- end }}
+    {{- if not (.Param "hideMeta") }}
+    <div class="post-meta">
+        {{- partial "translation_list.html" . -}}
+    </div>
+    {{- end }}
+</header>
+
+<head>
+    {{- partial "head.html" . -}}
+    <title>{{ .Title }}</title>
+    <!-- 这里将来可以引入你的AI聊天界面CSS和JS -->
+</head>
+
+
+<div id="searchbox">
+    <h2>向我提问吧</h2>
+    <div class="input-with-button"> <!-- 新增的包装容器 -->
+        <textarea id="question-input" placeholder="在这里输入" aria-label="输入你要问AI的问题" rows="1" oninput="autoResize(this)" onkeypress="if(event.key === 'Enter'){event.preventDefault(); askAI();}"></textarea>
+        <!-- <input type="text" id="question-input" placeholder="在这里输入" aria-label="输入你要问AI的问题"> -->
+        <button onclick="askAI()" class="inline-button" aria-label="发送问题">发送</button>
+    </div>
+    <ul id="searchResults" aria-label="search results"></ul>
+</div>
+
+    <!-- 新增：API响应显示区域 -->
+    <div id="api-response-container" class="response-container" style="display: none;">
+        <div class="response-header">
+            <h2>AI回答</h2>
+        </div>
+        <div id="api-response-content" class="response-content">
+            <!-- API返回的内容将在这里显示 -->
+        </div>
+    </div>
+
+
+
+<script>
+// 确保函数是全局可访问的
+function autoResize(textarea) {
+    console.log('autoResize function called');
+    textarea.style.height = 'auto';
+    textarea.style.height = textarea.scrollHeight + 'px';
+    
+    // 限制最大高度
+    if (textarea.scrollHeight > 200) {
+        textarea.style.height = '200px';
+        textarea.style.overflowY = 'auto';
+    } else {
+        textarea.style.overflowY = 'hidden';
+    }
+}
+
+
+// 页面加载时初始化
+document.addEventListener('DOMContentLoaded', function() {
+    const textarea = document.getElementById('question-input');
+    if (textarea) {
+        // 初始调整一次高度
+        setTimeout(() => autoResize(textarea), 100);
+    }
+});
+</script>
+
+<script>
+async function askAI() {
+    const question = document.getElementById('question-input').value.trim();
+    const responseContainer = document.getElementById('api-response-container');
+    const responseContent = document.getElementById('api-response-content');
+    
+    if (!question) {
+        alert('请输入问题');
+        return;
+    }
+    
+    // 显示响应容器
+    responseContainer.style.display = 'block';
+    
+    // 显示加载状态
+    responseContent.innerHTML = '<div class="loading">思考中...</div>';
+    responseContent.classList.add('loading');
+    
+    // 禁用按钮防止重复提交
+    const sendButton = document.querySelector('.inline-button');
+    const originalText = sendButton.textContent;
+    sendButton.textContent = '思考中...';
+    sendButton.disabled = true;
+    
+    try {
+        // 调用真实的API
+        const answer = await callAIApi(question);
+        
+        // 移除加载状态
+        responseContent.classList.remove('loading');
+        
+        // 显示API返回的内容
+        responseContent.innerHTML = formatResponse(answer);
+        
+    } catch (error) {
+        responseContent.classList.remove('loading');
+        responseContent.innerHTML = `
+            <div class="error">
+                <p>出错啦: ${error.message}</p>
+                <p>请稍后重试或检查网络连接</p>
+            </div>
+        `;
+    } finally {
+        // 恢复按钮状态
+        sendButton.textContent = originalText;
+        sendButton.disabled = false;
+    }
+}
+
+// 真实的API调用函数
+async function callAIApi(question) {
+    const apiUrl = 'https://api.bearlybear.com/api/ask';
+    
+    try {
+        const response = await fetch(apiUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                question: question
+            })
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const data = await response.json();
+        return data.answer; // 根据您的API返回结构调整
+    } catch (error) {
+        console.error('API调用失败:', error);
+        throw error;
+    }
+}
+
+// 格式化响应内容（可选）
+function formatResponse(text) {
+    // 简单的格式化，可以将换行符转换为<br>
+    return text.replace(/\n/g, '<br>');
+}
+
+// 清空响应内容
+function clearResponse() {
+    const responseContainer = document.getElementById('api-response-container');
+    responseContainer.style.display = 'none';
+    document.getElementById('api-response-content').innerHTML = '';
+}
+</script>
+
+{{- end }}{{/* end main */}}

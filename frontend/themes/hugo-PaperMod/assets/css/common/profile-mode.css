@@ -37,6 +37,14 @@
     padding: 0 8px;
 }
 
+/* 为AI按钮的容器设置样式，相当于上面 buttons 普通按钮的容器 */
+.ai-button-container {
+    width: 100%; /* 确保容器占据整个宽度，为按钮换行做准备 */
+    margin-top: 0.5rem; /* 增加与上一行按钮的间距，可根据需要调整 */
+    display: flex;
+    justify-content: center; /* 让按钮在容器中水平居中 */
+}
+
 .button:active {
     transform: scale(0.96);
 }
