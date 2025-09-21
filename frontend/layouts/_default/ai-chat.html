@@ -33,8 +33,19 @@
     <ul id="searchResults" aria-label="search results"></ul>
 </div>
 
-    <!-- 新增：API响应显示区域 -->
-    <div id="api-response-container" class="response-container" style="display: none;">
+<div id="api-response-container" style="margin-top: 2rem;">
+    <!-- 小熊占位符 -->
+    <div id="placeholder" class="chat-placeholder">
+        <!--<img src="Bear.jpg" alt="机器熊" class="bear-avatar"> -->
+        <img src="{{ "/img/Bearwave.png" | relURL }}" alt="小熊" class="bear-avatar">
+
+        <div class="speech-bubble">
+            你好！我是机器熊，是熊熊的助理，我可以帮 TA 回答你的问题。你可以问我跟简历有关的问题，也可以随便聊聊。尽管提问吧！
+        </div>
+    </div>
+
+    <!-- 真实响应框 -->
+    <div id="real-response" class="response-container" style="display: none;">
         <div class="response-header">
             <h2>AI回答</h2>
         </div>
@@ -42,6 +53,9 @@
             <!-- API返回的内容将在这里显示 -->
         </div>
     </div>
+</div>
+
+
 
 
 
@@ -83,7 +97,8 @@ async function askAI() {
         return;
     }
     
-    // 显示响应容器
+    // 点击发送后：隐藏小熊，显示响应框
+    placeholder.style.display = 'none';
     responseContainer.style.display = 'block';
     
     // 显示加载状态
@@ -121,7 +136,8 @@ async function askAI() {
     }
 }
 
-// 真实的API调用函数
+
+
 async function callAIApi(question) {
     const apiUrl = 'https://api.bearlybear.com/api/ask';
     

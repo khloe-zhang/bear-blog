@@ -213,6 +213,67 @@ button#theme-toggle {
     to { opacity: 1; transform: translateY(0); }
 }
 
+/* 聊天式占位符布局 */
+.chat-placeholder {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 15px;
+    animation: fadeIn 0.5s ease;
+}
+
+/* 小熊头像 */
+img.bear-avatar {
+    border: none !important;
+    width: 150px;
+    height: auto;
+    flex-shrink: 0;
+    box-shadow: none !important; /* 去掉阴影 */
+    padding: 0 !important;     /* 去掉内边距 */
+    background: transparent !important; /* 避免背景色 */
+}
+
+/* 气泡样式 */
+.speech-bubble {
+    position: relative;
+    background: #fff;
+    border: 2px solid var(--tertiary);
+    border-radius: 12px;
+    padding: 12px 16px;
+    font-size: 16px;
+    line-height: 1.6;
+    max-width: 60%;
+    text-align: left;
+}
+
+/* 气泡小尾巴（指向小熊头像） */
+.speech-bubble::after {
+    content: "";
+    position: absolute;
+    top: 15px;
+    left: -12px; /* 让尾巴连到小熊 */
+    border-width: 10px 12px 10px 0;
+    border-style: solid;
+    border-color: transparent #fff transparent transparent;
+}
+
+.speech-bubble::before {
+    content: "";
+    position: absolute;
+    top: 15px;
+    left: -15px;
+    border-width: 10px 12px 10px 0;
+    border-style: solid;
+    border-color: transparent var(--tertiary) transparent transparent;
+}
+
+/* 小动画 */
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+
 .user-message {
     background-color: #e3f2fd;
     padding: 10px 15px;
