@@ -100,14 +100,12 @@ async function askAI() {
     }
     
     // 点击发送后：隐藏小熊，显示响应框
-    console.log("隐藏小熊");
-    placeholder.style.display = 'none';
+    // placeholder.style.display = 'none';
+    // realResponse.style.display = 'block';
 
-    // console.log("显示容器");
-    // responseContainer.style.display = 'block';
-
-    console.log("显示真实回答框");
-    realResponse.style.display = 'block';
+    placeholder.classList.add('hidden');
+    realResponse.classList.remove('hidden');
+    realResponse.classList.add('visible');
     
     // 显示加载状态
     responseContent.innerHTML = '<div class="loading">思考中...</div>';

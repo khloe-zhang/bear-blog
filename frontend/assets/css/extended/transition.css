@@ -199,6 +199,25 @@ button#theme-toggle {
     color: #333;
 }
 
+.response-container.visible {
+    display: block !important;
+    visibility: visible !important;
+}
+
+/* 隐藏类 */
+.hidden {
+    display: none !important;
+}
+
+.response-container.hidden {
+    display: none !important;
+}
+
+/* 确保小熊占位符也可以被隐藏 */
+.chat-placeholder.hidden {
+    display: none !important;
+}
+
 /* 加载状态样式 */
 .response-content.loading {
     display: flex;
