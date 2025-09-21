@@ -100,8 +100,13 @@ async function askAI() {
     }
     
     // 点击发送后：隐藏小熊，显示响应框
+    console.log("隐藏小熊");
     placeholder.style.display = 'none';
+
+    console.log("显示容器");
     responseContainer.style.display = 'block';
+
+    console.log("显示真实回答框");
     realResponse.style.display = 'block';
     
     // 显示加载状态
@@ -117,6 +122,7 @@ async function askAI() {
     try {
         // 调用真实的API
         const answer = await callAIApi(question);
+        console.log("API 返回结果:", answer);
         
         // 移除加载状态
         responseContent.classList.remove('loading');
