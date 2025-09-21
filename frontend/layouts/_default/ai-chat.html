@@ -128,7 +128,8 @@ async function askAI() {
         responseContent.classList.remove('loading');
         
         // 显示API返回的内容
-        responseContent.innerHTML = formatResponse(answer);
+        // responseContent.innerHTML = formatResponse(answer);\
+        responseContent.innerHTML = answer;
         
     } catch (error) {
         responseContent.classList.remove('loading');
@@ -144,9 +145,10 @@ async function askAI() {
         sendButton.disabled = false;
     }
 }
+</script>
 
 
-
+<script>
 async function callAIApi(question) {
     const apiUrl = 'https://api.bearlybear.com/api/ask';
     
@@ -174,11 +176,14 @@ async function callAIApi(question) {
 }
 
 // 格式化响应内容（可选）
+<script>
 function formatResponse(text) {
     // 简单的格式化，可以将换行符转换为<br>
     return text.replace(/\n/g, '<br>');
 }
+</script>
 
+<script>
 // 清空响应内容
 function clearResponse() {
     const responseContainer = document.getElementById('api-response-container');
