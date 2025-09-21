@@ -103,8 +103,8 @@ async function askAI() {
     console.log("隐藏小熊");
     placeholder.style.display = 'none';
 
-    console.log("显示容器");
-    responseContainer.style.display = 'block';
+    // console.log("显示容器");
+    // responseContainer.style.display = 'block';
 
     console.log("显示真实回答框");
     realResponse.style.display = 'block';
@@ -174,14 +174,16 @@ async function callAIApi(question) {
         throw error;
     }
 }
+</script>
 
-// 格式化响应内容（可选）
 <script>
+// 格式化响应内容（可选）
 function formatResponse(text) {
     // 简单的格式化，可以将换行符转换为<br>
     return text.replace(/\n/g, '<br>');
 }
 </script>
+
 
 <script>
 // 清空响应内容
