@@ -136,7 +136,7 @@ async function askAI() {
             const { value, done: doneReading } = await reader.read();
             done = doneReading;
             if (value) {
-                const chunk = decoder.decode(value);
+                const chunkStr = decoder.decode(value, { stream: true }); 
                 const lines = chunkStr.split(/\r?\n/);
                 for (let line of lines) {
                     line = line.trim();
