@@ -88,6 +88,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
 <script>
 async function askAI() {
+    const startTime = performance.now();  // 用户点击时间
     const question = document.getElementById('question-input').value.trim();
     const responseContainer = document.getElementById('api-response-container');
     const responseContent = document.getElementById('api-response-content');
@@ -120,13 +121,15 @@ async function askAI() {
     try {
         // 调用真实的API
         const answer = await callAIApi(question);
+        const endTime = performance.now();         // 记录响应返回时间
+        const latencyMs = Math.round(endTime - startTime); // 计算耗时（毫秒）
         console.log("API 返回结果:", answer);
+        console.log(`本次耗时: ${latencyMs} ms`);   
         
         // 移除加载状态
         responseContent.classList.remove('loading');
         
         // 显示API返回的内容
-        // responseContent.innerHTML = formatResponse(answer);\
         responseContent.innerHTML = answer;
         
     } catch (error) {
