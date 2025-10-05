@@ -94,8 +94,6 @@ async function askAI() {
     const responseContent = document.getElementById('api-response-content');
     const placeholder = document.getElementById('placeholder');   // ✅ 获取小熊
     const realResponse = document.getElementById('real-response'); // ✅ 获取真实响应框
-    const reader = response.body.getReader();
-    const decoder = new TextDecoder("utf-8");
     
     if (!question) {
         alert('请输入问题');
@@ -103,9 +101,6 @@ async function askAI() {
     }
     
     // 点击发送后：隐藏小熊，显示响应框
-    // placeholder.style.display = 'none';
-    // realResponse.style.display = 'block';
-
     placeholder.classList.add('hidden');
     realResponse.classList.remove('hidden');
     realResponse.classList.add('visible');
@@ -122,35 +117,40 @@ async function askAI() {
     
     try {
         // 调用真实的API
-        const answer = await callAIApi(question);
-        const endTime = performance.now();         // 记录响应返回时间
-        const latencyMs = Math.round(endTime - startTime); // 计算耗时（毫秒）
-        console.log("API 返回结果:", answer);
-        console.log(`本次耗时: ${latencyMs} ms`);   
-        
+        const response = await callAIApi(question);
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder("utf-8");
+
         // 移除加载状态
         responseContent.classList.remove('loading');
+        responseContent.innerHTML = "";
         
-        // 显示API返回的内容
-        responseContent.innerHTML = answer;
-
-        // 发送 latency_ms 给后端
-        await fetch('/api/record_latency', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({question, answer, latency_ms})
-        });
+        // 显示API返回的内容 暂时不用这个，改为流式显示
+        // responseContent.innerHTML = answer;
 
         // 处理流式响应
         let done = false;
+        let fullAnswer = "";
         while (!done) {
             const { value, done: doneReading } = await reader.read();
             done = doneReading;
             if (value) {
                 const chunk = decoder.decode(value);
                 responseContent.innerHTML += chunk; // 追加到回答框
+                fullAnswer += chunk;                 // 拼接完整回答
             }
         }
+
+        const endTime = performance.now();         // 记录响应返回时间
+        const latencyMs = Math.round(endTime - startTime); // 计算耗时（毫秒）
+        console.log(`本次耗时: ${latencyMs} ms`);
+
+        // 发送给后端延时的数据
+        await fetch('/api/record_latency', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ question, answer: fullAnswer, latency_ms: latencyMs })
+        });
         
     } catch (error) {
         responseContent.classList.remove('loading');
@@ -171,14 +171,12 @@ async function askAI() {
 
 <script>
 async function callAIApi(question) {
-    const apiUrl = 'https://api.bearlybear.com/api/ask';
-    
-    try {
-        const response = await fetch("/api/ask_stream", {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
+    //const apiUrl = 'https://api.bearlybear.com/api/ask';
+    const response = await fetch("/api/ask_stream", {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
             body: JSON.stringify({
                 question: question
             })
@@ -188,12 +186,7 @@ async function callAIApi(question) {
             throw new Error(`HTTP error! status: ${response.status}`);
         }
 
-        const data = await response.json();
-        return data.answer; // 根据您的API返回结构调整
-    } catch (error) {
-        console.error('API调用失败:', error);
-        throw error;
-    }
+        return response; 
 }
 </script>
 
