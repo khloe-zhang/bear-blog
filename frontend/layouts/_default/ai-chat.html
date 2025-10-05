@@ -94,6 +94,7 @@ async function askAI() {
     const responseContent = document.getElementById('api-response-content');
     const placeholder = document.getElementById('placeholder');   // ✅ 获取小熊
     const realResponse = document.getElementById('real-response'); // ✅ 获取真实响应框
+    responseContent.innerHTML = ""; // 清空之前内容
     
     if (!question) {
         alert('请输入问题');
@@ -136,10 +137,25 @@ async function askAI() {
             done = doneReading;
             if (value) {
                 const chunk = decoder.decode(value);
-                responseContent.innerHTML += chunk; // 追加到回答框
-                fullAnswer += chunk;                 // 拼接完整回答
+                const lines = chunk.split("\n");
+            for (const line of lines) {
+                if (line.startsWith("data:")) {
+                    const jsonStr = line.replace(/^data:\s*/, '');
+                    if (jsonStr.trim() === "[DONE]") continue; // 流结束标志
+                    try {
+                        const parsed = JSON.parse(jsonStr);
+                        const content = parsed.choices[0].delta?.content;
+                        if (content) {
+                            responseContent.innerHTML += content;
+                            fullAnswer += content;  // 拼接完整回答
+                        }
+                    } catch (err) {
+                        console.error("解析 chunk 错误:", err, line);
+                    }
+                }
             }
         }
+    }
 
         const endTime = performance.now();         // 记录响应返回时间
         const latencyMs = Math.round(endTime - startTime); // 计算耗时（毫秒）
