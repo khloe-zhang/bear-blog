@@ -94,6 +94,8 @@ async function askAI() {
     const responseContent = document.getElementById('api-response-content');
     const placeholder = document.getElementById('placeholder');   // ✅ 获取小熊
     const realResponse = document.getElementById('real-response'); // ✅ 获取真实响应框
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder("utf-8");
     
     if (!question) {
         alert('请输入问题');
@@ -138,6 +140,17 @@ async function askAI() {
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({question, answer, latency_ms})
         });
+
+        // 处理流式响应
+        let done = false;
+        while (!done) {
+            const { value, done: doneReading } = await reader.read();
+            done = doneReading;
+            if (value) {
+                const chunk = decoder.decode(value);
+                responseContent.innerHTML += chunk; // 追加到回答框
+            }
+        }
         
     } catch (error) {
         responseContent.classList.remove('loading');
@@ -167,7 +180,8 @@ async function callAIApi(question) {
                 'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-                question: question
+                question: question,
+                stream: true
             })
         });
 
