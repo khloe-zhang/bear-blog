@@ -131,6 +131,13 @@ async function askAI() {
         
         // 显示API返回的内容
         responseContent.innerHTML = answer;
+
+        // 发送 latency_ms 给后端
+        await fetch('/api/record_latency', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({question, answer, latency_ms})
+        });
         
     } catch (error) {
         responseContent.classList.remove('loading');
