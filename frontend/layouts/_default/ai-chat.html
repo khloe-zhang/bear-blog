@@ -172,7 +172,7 @@ async function askAI() {
 <script>
 async function callAIApi(question) {
     //const apiUrl = 'https://api.bearlybear.com/api/ask';
-    const response = await fetch("/api/ask_stream", {
+    const response = await fetch("https://api.bearlybear.com/api/ask_stream", {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
