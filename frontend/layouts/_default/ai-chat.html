@@ -131,29 +131,35 @@ async function askAI() {
 
         // 处理流式响应
         let done = false;
+        let buffer = "";
         let fullAnswer = "";
-        while (!done) {
-            const { value, done: doneReading } = await reader.read();
-            done = doneReading;
-            if (value) {
-                const chunkStr = decoder.decode(value, { stream: true }); 
-                const lines = chunkStr.split(/\r?\n/);
-                for (let line of lines) {
-                    line = line.trim();
-                    if (!line) continue;    // 跳过空行
-                    if (line === "data: [DONE]") continue;
-                    if (line.startsWith("data:")) {
-                        line = line.slice(6);    // 去掉 "data: "                   
-                        try {
-                            const parsed = JSON.parse(line);
-                            const content = parsed.choices?.[0]?.delta?.content;
-                            if (content) {
-                                fullAnswer += content;  // 拼接完整回答
-                                responseContent.innerHTML = fullAnswer;
-                            }
-                        } catch (e) {
-                            console.warn("解析 chunk 错误:", e, line);
+        while (true) {
+            const { value, done } = await reader.read();
+            if (done) break;
+            const chunk = decoder.decode(value, { stream: true });
+            buffer += chunk;
+
+            // SSE 按行处理
+            let lines = buffer.split(/\r?\n/);
+            buffer = lines.pop(); // 最后一行可能不完整，保留到下一轮
+
+            for (let line of lines) {
+                line = line.trim();
+                if (!line) continue;
+                if (line === "data: [DONE]") continue;
+
+                if (line.startsWith("data: ")) {
+                    const jsonStr = line.slice(6);
+                    try {
+                        const parsed = JSON.parse(jsonStr);
+                        const content = parsed.choices?.[0]?.delta?.content;
+                        if (content) {
+                            fullAnswer += content;
+                            responseContent.innerHTML = fullAnswer;
                         }
+                    } catch (e) {
+                        // 这里只是日志，下一轮继续拼接
+                        console.warn("解析 chunk 错误:", e, jsonStr);
                     }
                 }
             }
