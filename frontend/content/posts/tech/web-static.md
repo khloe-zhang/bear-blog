@@ -1,5 +1,5 @@
 ---
-title: "搭建这个网站用到的技术总结"
+title: "网站搭建技术总结（一）静态篇"
 author: ["Bear"]
 date: 2025-08-17T17:33:00+08:00
 keywords: 
@@ -11,7 +11,7 @@ tags:
 - AWS
 - Cloudflare
 - 网络安全
-#description: "搭建网站用到的 Web 相关技术栈"
+description: "搭建静态网页（页面样式、博客文章）用到的 Web 相关技术栈"
 weight:
 slug: ""
 draft: false # 是否为草稿
@@ -24,7 +24,7 @@ hidemeta: false # 是否隐藏文章的元信息，如发布日期、作者等
 disableShare: true # 底部不显示分享栏
 showbreadcrumbs: true # 顶部显示路径
 cover:
-    image: "" # 图片路径：posts/tech/123/123.png
+    image: "posts/tech/web-static/homepage.png"
     caption: "" # 图片底部描述
     alt: ""
     relative: false
@@ -37,13 +37,13 @@ cover:
 
 PS：主题作者 Sulv 似乎现在没有继续维护自己的网站和代码了，其他教程里引用的他的初版使用指南，是发布在他的个人网站上的，链接已经失效。好在还有 Wayback Machine 这个神器，可以穿越回去看[原有的教程](https://web.archive.org/web/20230131002909/https://www.sulvblog.cn/posts/blog/build_hugo/)。
 
-# 静态网站（当前版本）
+# 准备工作——买域名
 
 开始搭网站之前，先把域名买上。都说买了装备才有动力干活，我在买下域名的当天就已一鼓作气上线了网站，速度感人。当然此前已经配置好了模板，并且尝试用 Github Pages 托管上线了，但发现页面在国内无法打开，还是得搭个正儿八经的基座。
 
 首先我对比了两家域名服务商的价格，对于我的域名，AWS Route53 是 14 美金一年，CloudFlare 是 10 美金一年，续约同价。这里是常规的 .com 后缀的价格，如果想买 .net 或其他后缀似乎是另外的价钱。除了价格优势外，Cloudflare 还有方便部署的 HTTPS 和 SSL/TLS、DDoS、WAF 等安全服务。此外，据说 AWS 在中国大陆的 DNS 速度比较慢。综合看来，还是选择了 CloudFlare 买域名 + DNS 托管（其实两个可以分开，这里只是为了方便所以都用 Cloudflare 了）。买好域名后，就可以开始基础设施的配置了。 
 
-## AWS S3
+# AWS S3
 
 由于我的博客网站目前只有静态内容，本质上在访问时只是在加载一个个不同的 HTML 页面。因此，可以将这些 HTML 文件都上传到 S3 存储桶中，每次用户请求时，S3 会充当服务器，根据请求路径返回相应的 HTML 文件。
 
@@ -70,7 +70,7 @@ PS：主题作者 Sulv 似乎现在没有继续维护自己的网站和代码了
 
 概念就介绍到这里，下面讲讲我搭建 S3 的过程。
 
-### 1. 创建存储桶
+## 1. 创建存储桶
 
 在控制台上找到 S3，新建存储桶，然后跟着指引操作就差不多了，注意需要取消“阻止所有公共访问”，确保存储桶公开可用。在创建后，来到存储桶的管理页，“属性”标签页翻到底，有“静态网站托管”这个功能，需要启用。在同一个设置页中，需要设定索引页与错误页，一般是 index.html 和 404.html，具体要看自己的 html 文件里是不是有这两个名字。索引页意味着在没有指定路径后缀的情况下，将默认访问的页面，一般是网站首页。404就是发生错误时的页面啦。
 
@@ -82,7 +82,7 @@ PS：主题作者 Sulv 似乎现在没有继续维护自己的网站和代码了
 - AllowCloudFrontServicePrincipal: 如果只允许通过 Cloudfront 读取 S3 而避免直接向 S3 发请求，可以使用这个，不过还需要配置Cloudfront的 OAI（Origin Acess Identity），疑似现在已经升级成 OAC（Origin Access Control），详细可参考[限制对 Amazon S3 源的访问](https://docs.amazonaws.cn/zh_cn/AmazonCloudFront/latest/DeveloperGuide/private-content-restricting-access-to-s3.html)这篇文档。部署起来有些麻烦。
 
 
-### 2. 将 HTML 文件上传到存储桶
+## 2. 将 HTML 文件上传到存储桶
 
 在本地编辑好文件内容后，需要先用 Hugo 的命令将所有内容（md、css、图片以及其他config文件等）都生成为 HTML 文件。命令是：
 
@@ -118,7 +118,7 @@ aws s3 sync frontend/public/ s3://[存储桶名] --delete
 
 为了节省时间，后续我配置了 Github Actions 自动化部署流程，每次在 Github 仓库更新并推送内容时，都会自动运行 hugo 生成 HTML 文件并上传到 S3。具体的内容请参考 [Github Actions](#github-actions-自动部署) 这一章节。
 
-## AWS CloudFront CDN
+# AWS CloudFront CDN
 
 初步完成了 S3 的配置后，就可以开始让 CloudFront 代理 S3 静态网站地址，并作为博客对外展示的地址（实际上也不会直接对外暴露地址，只是在 DNS 记录配置时，让域名跳转到 CDN 代理的地址）。作为全球分发网络 CDN，Cloudfront 可以将请求转移到离读者较近的数据中心（即边缘节点），提高访问的速度；并且如果内容已经在这个边缘节点缓存过，Cloudfront 也会直接返回缓存的内容，节省了直接发到 S3 的请求次数。
 
@@ -126,7 +126,7 @@ aws s3 sync frontend/public/ s3://[存储桶名] --delete
 
 关于 Cloudfront 的更多介绍，可以参考[这篇 AWS 的博客](https://aws.amazon.com/cn/blogs/china/amazon-cloudfront-article/)（里面的配置示例图可以不用参考了，时过境迁控制台已经大变样）。
 
-### 1. 创建分发（Distribution）
+## 1. 创建分发（Distribution）
 
 分发（Distribution）是 Cloudfront 运作的基本单元，拥有自己的 ID 和域名，以便后续用于 DNS 记录配置。在 Cloudfront 面板中，点击创建分发，然后配置以下几项：
 - Origin：还记不记得刚才[创建 S3 存储桶](#1-创建存储桶)的时候生成的节点地址？[存储桶名].s3-website-[AZ 区名].amazonaws.com 搞里头。
@@ -136,7 +136,7 @@ aws s3 sync frontend/public/ s3://[存储桶名] --delete
 
 Alternative domain name (CNAMEs) 需要配置为自己的域名，[域名].com 和 www.[域名].com 两个都需要加上。这一步似乎无法直接在创建分发的时候完成，提示让我稍后再加。于是创建完成后，在“常规”标签页的“设置”版块编辑中，找到 CNAME 一栏加上即可。同样在这个版块中，还有 [SSL 证书的配置](#2-https-与-tls-证书)，稍后一起说。
 
-## Github Actions 自动部署
+# Github Actions 自动部署
 
 如果每次更新内容都要手动 hugo 生成 public 文件夹再上传到 S3，未免太麻烦。于是通过 Github Actions 设置一个自动化部署管道：每当我的仓库有新内容 commit 时，都会触发自动化部署流程，一站式帮我完成这些步骤，我只要管内容更新就可以了，这些部署和构建都会自动完成，好丝滑呀！
 
@@ -194,9 +194,9 @@ jobs:  # jobs 里列出要按顺序完成哪些动作
 </figure>
 
 
-## CloudFlare 
+# CloudFlare 
 
-### 什么是反向代理
+## 什么是反向代理
 
 此处先讲讲 Cloudflare 本身的用途，都是概念，如果急着看步骤可以跳[下一小节](#1-域名与-dns-配置)。
 
@@ -230,7 +230,7 @@ CloudFlare 的反向代理主要实现以下几个功能：
 
 总之，在这个网站中，CloudFlare 的 “橙色云朵” Proxy 模式本质上就是反向代理服务器，负责代表网站接收用户请求、处理 HTTPS、执行缓存与安全策略。不仅提升了访问速度，也让网站更安全、更好用。
 
-### 1. 域名与 DNS 配置 
+## 1. 域名与 DNS 配置 
 在 Cloudflare 买了域名后，一站式直通控制台。从左侧菜单栏来到 DNS record 配置，先添加这两条记录：
 
 |  Type   | Name  | Content | Proxy Status |
@@ -240,7 +240,7 @@ CloudFlare 的反向代理主要实现以下几个功能：
 
 配置好后，在浏览器中输入域名应该就能跳转到网站首页了。但此时还没有配置 HTTPS，网站仍然不能安全访问。
 
-### 2. HTTPS 与 TLS 证书
+## 2. HTTPS 与 TLS 证书
 
 这里又涉及到了 AWS，要去 AWS Certificate Manager (ACM) 里申请安全证书，然后再回来添加新的 DNS 记录。选 ACM 有几个理由，首先是完全免费，且可直接绑定到 AWS CloudFront 分发，只需通过 DNS 验证你拥有该域名（Cloudflare 中配置）。
 
@@ -252,17 +252,17 @@ CloudFlare 的反向代理主要实现以下几个功能：
 
 至此，HTTPS 与安全证书也配置完成了。现在访问域名，会自动重定向到 https 的 URL，实现安全访问。我想实现的“输入域名->浏览器看到我的博客页面”这个目标已经达成！接下来就是一些额外的工作，包括缓存、网络安全配置等，让我的网站变得更加完备。
 
-## 网络安全那些事
+# 网络安全那些事
 
 六月底网站上线，紧接着就回老家了，忙忙碌碌中十几天没有去管过网站数据。一直听说 AWS 免费套餐的额度对于个人网站绰绰有余，加上 Cloudflare 有一些基础的防御措施，是在域名管理中自动生效的，所以也没有担心过。直到七月中旬的某天，突然收到 AWS 的邮件，提醒我免费套餐的额度即将超标。仔细看了看额度用量，主要是 S3 超标，每月免费 2 万次请求的进度条已经飚红，马上就要顶格。又去 Cloudflare 控制台看了一下，似乎是收到了很多无意义的请求，大量重复 IP 来自同一个遥远的国家，又并非我目标读者所在地（没错就是爱尔兰）。过去 24 小时中，Unique Visitor 很少，只有两位数，但总请求量却爆棚，达到一千多条。我想应该是受到了某种网络攻击吧，早就听说网上有很多自动扫描脚本不停地在找端口暴露的服务器，没想到我这小小的静态网站也成了靶子。第一次面对这种攻击，还有点小紧张。那几天因为无法抽太多时间出来处理，于是简单粗暴地直接在 S3 停用了静态网站托管，以免收到高额账单。
 
 时间来到七月下旬，准备重振精神处理网站的问题。Cloudflare 和 AWS 都各自有 WAF 防火墙功能，两边都研究了一下。
 
-### Cloudflare 防火墙规则
+## Cloudflare 防火墙规则
 
 进入控制台左侧 Security > Security Rules，在这里免费用户可以设定 5 条安全规则、1 条速率限制规则。我观察了 Analytics & Logs 里面的 HTTP Traffic 和 Security，以及 Security > Analytics 的统计，制定了下面几个规则来防范攻击：
 
-1. 对 IP 地址来源的限制。爱尔兰、法国、澳大利亚这几个比较猖狂，24 小时分别访问我 500 次、300 次、200 次，我真的有这么多粉丝吗，求放过。我的措施是，对国内和新加坡 IP 直接放行，对其他国家的 IP 会采用 Cloudflare 提供的 Managed Challenge 验证，它会检测访问者的浏览器、行为等来判断要不要放行。如果有可疑的行为，就会弹出交互认证，认证通过了才能放行，类似我们平常访问一些网站的时候，突然跳出来的“点击这里以验证你是否是人类”，或者“选出所有包含XXX的图片”。关于这个验证的原理可以参考 [Cloudflare 的这篇博客](https://blog.cloudflare.com/zh-cn/end-cloudflare-captcha/)。关于几种 Challenge 的行为可以参考 [Interstitial Challenge Pages](https://developers.cloudflare.com/cloudflare-challenges/challenge-types/challenge-pages/)。
+1. 对 IP 地址来源的限制。爱尔兰、法国、澳大利亚这几个比较猖狂，24 小时分别访问我 500 次、300 次、200 次，我真的有这么多粉丝吗，求放过。我的措施是，对中国大陆、香港、台湾和新加坡 IP 直接放行，对其他国家的 IP 会采用 Cloudflare 提供的 Managed Challenge 验证，它会检测访问者的浏览器、行为等来判断要不要放行。如果有可疑的行为，就会弹出交互认证，认证通过了才能放行，类似我们平常访问一些网站的时候，突然跳出来的“点击这里以验证你是否是人类”，或者“选出所有包含XXX的图片”。关于这个验证的原理可以参考 [Cloudflare 的这篇博客](https://blog.cloudflare.com/zh-cn/end-cloudflare-captcha/)。关于几种 Challenge 的行为可以参考 [Interstitial Challenge Pages](https://developers.cloudflare.com/cloudflare-challenges/challenge-types/challenge-pages/)。
   > When incoming requests match…  
   > not (ip.geoip.country in {"CN" "SG"})  
   > Action: Managed Challenge
@@ -283,9 +283,9 @@ cf.client.bot 是 Cloudflare 维护的好 Bot 名单，包括 Google, Yahoo, Bin
 
 另外 Cloudflare 自带 Bot fight mode，会自动检测 Bot，开启方法是 Security > Settings 找到 Bot fight mode 启用即可。
 
-至此，Cloudflare 这边的安全措施就差不多了，目前来看效果还是不错的，免费套餐用量消耗得很慢，说明防住了不少无意义请求。
+至此，Cloudflare 这边的安全措施就差不多了，目前来看效果还是不错的，免费套餐用量消耗得很慢，说明防住了不少无意义请求，在 Cloudflare 的 Security > Events 里也可以看到有很多快速批量访问被屏蔽。
 
-### AWS WAF 与 ACL 规则
+## AWS WAF 与 ACL 规则
 
 上面说的这些规则，AWS WAF 里面也都可以设置，但是要收费。为了探索如何设置，我也是以 3.27 美元的成本尝试了一下（开了几天就关了，真的不如 Cloudflare 直观好用，人家还是免费的）。
 
@@ -304,7 +304,7 @@ WAF 的工作原理是需要建立 ACL，设定规则组 Ruleset，然后把上�
 </figure>
 
 
-## 缓存配置
+# 缓存配置
 
 其实缓存是在受到了网络攻击后才想起来这回事。大量请求之下，缓存命中率却非常低，导致每次请求都要直接到达 S3，消耗了用量。在额度耗尽当天去检查 Cloudflare 控制台时，24 小时内有 3.1K 次访问，但只有 1.52K 命中了缓存，基本只有 50% 命中率，对于静态网站来说很低了，正常来说 70% ~ 95% 才是理想状态。
 
@@ -359,12 +359,4 @@ aws s3 sync public/ s3://bucket-name/ \
 
 谢谢观看！网站建设这块我还是初出茅庐，许多概念解释或者配置还是有不周到的地方，也欢迎在评论区指正。
 
-# 动态网站（计划版本）
-
-## AWS EC2
-
-## AWS EBS
-
-## MySQL
-
-## Nginx
+下回预告：[网站搭建技术总结（二）动态篇](https://bearlybear.com/posts/tech/web-dynamic/) 我给网站新加了AI问答的接口，引入了更多技术栈。 
