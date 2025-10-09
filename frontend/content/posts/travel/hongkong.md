@@ -21,7 +21,7 @@ hidemeta: false # 是否隐藏文章的元信息，如发布日期、作者等
 disableShare: true # 底部不显示分享栏
 showbreadcrumbs: true #顶部显示路径
 cover:
-    image: "posts/travel/hongkong/sunset.jpg" 
+    image: "posts/travel/hongkong/cover.jpg" 
     caption: "" #图片底部描述
     alt: ""
     relative: false
