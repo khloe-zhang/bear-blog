@@ -155,7 +155,9 @@ async function askAI() {
                         const content = parsed.choices?.[0]?.delta?.content;
                         if (content) {
                             fullAnswer += content;
-                            responseContent.innerHTML = fullAnswer;
+                            // responseContent.innerHTML = fullAnswer; 尝试逐行淡入，这行先注释掉
+                            // 直接更新内容并应用动画
+                            updateContentWithAnimation(responseContent, fullAnswer);
                         }
                     } catch (e) {
                         // 这里只是日志，下一轮继续拼接
@@ -189,6 +191,17 @@ async function askAI() {
         sendButton.textContent = originalText;
         sendButton.disabled = false;
     }
+}
+
+// 更新内容并添加动画，这是为了逐行淡入效果新加的
+function updateContentWithAnimation(container, content) {
+    container.innerHTML = content;
+    container.classList.add('content-update');
+    
+    // 移除动画类，以便下次可以重新触发
+    setTimeout(() => {
+        container.classList.remove('content-update');
+    }, 300);
 }
 </script>
 
