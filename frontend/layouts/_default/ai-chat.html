@@ -203,6 +203,24 @@ function updateContentWithAnimation(container, content) {
         container.classList.remove('content-update');
     }, 300);
 }
+
+// 小熊完全加载后再显示
+document.addEventListener('DOMContentLoaded', function() {
+    const img = document.querySelector('.bear-avatar');
+    const placeholder = document.getElementById('placeholder');
+    
+    function showBear() {
+        placeholder.classList.add('loaded');
+    }
+    
+    if (img.complete) {
+        showBear();
+    } else {
+        img.addEventListener('load', showBear);
+        // 保险：3秒后无论如何都显示
+        setTimeout(showBear, 3000);
+    }
+});
 </script>
 
 

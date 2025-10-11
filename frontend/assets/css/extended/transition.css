@@ -251,7 +251,13 @@ button#theme-toggle {
     align-items: flex-start;
     gap: 12px;
     padding: 15px;
-    animation: fadeIn 0.5s ease;
+    opacity: 0; /* 初始隐藏 */
+    transition: opacity 0.8s ease-in-out; /* 淡入过渡 */
+}
+
+/* 小熊加载完成后显示 */
+.chat-placeholder.loaded {
+    opacity: 1;
 }
 
 /* 小熊头像 */
