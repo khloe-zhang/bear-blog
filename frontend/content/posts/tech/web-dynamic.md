@@ -695,13 +695,13 @@ scrape_configs:
     metrics_path: '/metrics' # metrics端点路径
     scrape_interval: 15s # 抓取间隔
 
-  - job_name: 'node-exporter'
+  - job_name: 'node-exporter' # 抓取主机健康指标
     scrape_interval: 15s
     static_configs:
       - targets: ['localhost:9100']
 ```
 
-最后这个 node-exporter 是用来收集 EC2 主机本身的运行指标的，比如 CPU 利用率、内存等，需要提前下载并解压。它的端口号是 9100，会暴露给 Prometheus 来抓取数据。对于 node-exporter，建议也配置一个systemd文件，便于开机自启：
+最后这个 node-exporter 是 Prometheus 提供的一个工具，用来收集 EC2 主机本身的运行指标，比如 CPU 利用率、内存等，需要提前下载并解压。它的端口号是 9100，会暴露给 Prometheus 来抓取数据。对于 node-exporter，建议也配置一个systemd文件，便于开机自启：
 ```shell
 sudo nano /etc/systemd/system/node-exporter.service
 
@@ -724,7 +724,7 @@ PrivateTmp=yes
 WantedBy=multi-user.target
 ```
 
-配置完成后，重启服务，跟刚才 Nginx 的流程一样，用 systemctl 命令 daemon-reload > enable > start 即可。
+配置完成后，重启服务，跟刚才 Nginx 的流程一样，用 systemctl 命令 daemon-reload 然后 enable 最后 start 即可。
 
 要测试指标是否能被成功抓取：
 ```shell
@@ -740,13 +740,24 @@ curl http://localhost:9100/metrics | grep -E "(node_memory|node_cpu)"
 
 
 ## Grafana
-指标记录，包括延迟（未完待续）
+上面在 Prometheus 中配置完各项抓取指标后，其实在 Prometheus 页面本身也可以简单查询指标，但是如果想做更加直观的可视化面板，就要用到 Grafana，它支持导入多种数据源，并可视化为表格、饼图、折线图、柱状图等等类型。
+
+首先，在实例上安装并启动 Grafana。
+
+```shell
+sudo apt-get install -y grafana
+sudo systemctl start grafana-server
+sudo systemctl enable grafana-server
+```
+
+然后就可以通过网页访问GUI了，地址是 http://\<EC2-IP>:3000，默认用户名/密码：admin/admin。
 
 ### 可视化面板配置
-（未完待续）
+面板也就是 Dashboard，在页面中点击新建 Dashboard。在这里我建了3个面板，分别展示主机健康状态、API调用次数和频率，以及API提问和回答的文字记录。在 Explore 菜单栏里添加数据源，然后在创建面板的时候选择需要的数据源，并且设置相应的抓取代码。（待补充）
+
 
 ### SQLite
-（未完待续）
+我用 SQLite 来记录用户的AI问答历史文字。
 ```python
 from sqlalchemy.orm import Session
 from db import get_db, SessionLocal, init_db, QAHistory
@@ -754,4 +765,425 @@ from db import get_db, SessionLocal, init_db, QAHistory
 ```
 
 # 前端代码修改
+
+## 视觉元素
+本来按照 Hugo 的主题模板，首页只有四个入口。现在为了增加 AI 对话入口，需要新增一个长方形的按键。
+
+```html
+<div class="ai-button-container">
+    <a class="button ai-button" href="/ai-chat" rel="noopener" title="AI问答">
+        <span class="button-inner">
+            🤖 AI 问答
+        </span>
+    </a>
+</div>
+```
+
+在 CSS 文件中定义这个新的 ai-button-container 容器以及按钮本身的样式。
+
+```css
+.ai-button-container {
+    width: 100%; /* 确保容器占据整个宽度，为按钮换行做准备 */
+    margin-top: 0.5rem; /* 与上一行按钮的间距 */
+    display: flex;
+    justify-content: center; /* 让按钮在容器中水平居中 */
+}
+
+.button:active {
+    transform: scale(0.96); /* 点击按钮时，会有一个缩小的效果， 交互上展示出点击有效*/
+}
+```
+
+然后就是 AI 问答本身的页面了。每个网页最表层是 markdown 文件，放置在 content 文件夹里，里面还有 about 关于、时间轴、友链、搜索的 md 文件。新建一个 ai-chat.md 文件，在里面引用样式为 ai-chat。
+
+```markdown
+---
+title: "🤖 AI问答"
+layout: ai-chat
+---
+```
+
+在 layouts/_default/ 目录下，新建 ai-chat.html 文件。对话页面的所有前端 HTML 代码都在这里面定义。
+
+开头两段 \<head> 和 \<header> 代码是页面的头部和元信息部分，可以从同一目录下的其他文件里复制过来。
+
+```html
+<div id="searchbox">
+    <h2>向我提问吧</h2>
+    <div class="input-with-button"> <!-- 用户输入框的容器 -->
+        <textarea id="question-input" placeholder="在这里输入" aria-label="输入你要问AI的问题" rows="1" oninput="autoResize(this)" onkeypress="if(event.key === 'Enter'){event.preventDefault(); askAI();}"></textarea> 
+        <button onclick="askAI()" class="inline-button" aria-label="发送问题">发送</button>
+    </div>
+</div>
+```
+
+相应的 CSS 样式在 assets/css/extended/transition.css 这个文件里定义。
+```css
+/* 输入框和按钮的包装容器 */
+.input-with-button {
+    position: relative; /* 为绝对定位的按钮提供参考 */
+    display: flex;
+    width: 100%; /* 与搜索框同宽 */
+    max-width: 800px; /* 限制最大宽度，与原有设计保持一致 */
+    margin: 0 auto; /* 居中显示 */
+    margin-top: 0.5rem;
+}
+
+/* 输入框样式 */
+#question-input {
+    flex: 1; /* 占据剩余所有空间 */
+    padding-right: 70px; /* 为按钮预留空间，防止文字被遮挡 */
+    padding: 10px 70px 12px 15px;
+    border: 2px solid;
+    border-color: var(--tertiary);
+    border-radius: 12px; /* 圆角边框 */
+    font-size: 16px;
+    box-sizing: border-box; /* 确保padding不会影响总宽度 */
+    resize: none;
+    overflow-y: hidden;
+    width: 100%;
+    transition: height 0.2s ease;
+}
+
+/* 内嵌搜索按钮样式 */
+.inline-button {
+    position: absolute;
+    right: 4px; /* 距离右侧4px */
+    bottom: 4px; /* 距离顶部4px */
+    height: 36px; /* 比输入框稍矮 */
+    padding: 0 16px;
+    background: var(--primary); /* 使用颜色主题，主题文件在 themes/hugo-PaperMod/assets/css/core/theme-vars.css */
+    border: none;
+    border-radius: 20px; /* 稍小的圆角 */
+    color: white;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+
+/* 按钮悬停效果，会放大一点 */
+.inline-button:hover {
+    background: var(--primary); /* 使用主题的主色变量 */
+    transform: scale(1.02);
+}
+
+/*当点击发送后，按钮暂时禁用的效果*/
+.inline-button:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+}
+```
+
+最初版本的发送样式就只有这些，只有最基本的输入文本框和发送键。后来觉得这样看起来太空旷了，于是加了一个挥手的小熊图片，以及小熊说的话，来引导用户的输入。用户在点击发送后，小熊会退场，真实响应框会取代这个位置。这两段都被包装在一个 api-response-container 容器里。
+
+```html
+<div id="api-response-container" style="margin-top: 2rem;">
+    <!-- 小熊占位符 -->
+    <div id="placeholder" class="chat-placeholder">
+        <!--<img src="Bear.jpg" alt="机器熊" class="bear-avatar"> -->
+        <img src="{{ "/img/Bearwave.png" | relURL }}" alt="小熊" class="bear-avatar">
+
+        <div class="speech-bubble">
+            你好！我是机器熊，是熊熊的助理，我可以帮 TA 回答你的问题。你可以问我跟简历有关的问题，也可以随便聊聊。尽管提问吧！
+        </div>
+    </div>
+
+    <!-- 真实响应框 -->
+    <div id="real-response" class="response-container" style="display: none;">
+        <div class="response-header">
+            <h2>AI回答</h2>
+        </div>
+        <div id="api-response-content" class="response-content">
+            <!-- API返回的内容将在这里显示 -->
+        </div>
+    </div>
+</div>
+```
+
+对应的 CSS 配置如下。
+
+```css
+/* 小熊聊天占位符布局 */
+.chat-placeholder {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 15px;
+    opacity: 0; /* 初始隐藏 */
+    transition: opacity 0.8s ease-in-out; /* 淡入过渡 */
+}
+
+/* 为了防止加载卡顿，在小熊图片资源加载完成后再淡入显示 */
+.chat-placeholder.loaded {
+    opacity: 1;
+}
+
+/* 小熊头像 */
+img.bear-avatar {
+    border: none !important;
+    width: 150px;
+    height: auto;
+    flex-shrink: 0;
+    box-shadow: none !important; /* 去掉阴影 */
+    padding: 0 !important;     /* 去掉内边距 */
+    background: transparent !important; /* 避免背景色 */
+}
+
+/* 气泡样式 */
+.speech-bubble {
+    position: relative;
+    background: #fff;
+    border: 2px solid var(--tertiary);
+    border-radius: 12px;
+    padding: 12px 16px;
+    font-size: 16px;
+    line-height: 1.6;
+    max-width: 60%;
+    text-align: left;
+}
+
+/* 气泡小尾巴（指向小熊头像） */
+.speech-bubble {
+    content: "";
+    position: absolute;
+    top: 15px;
+    left: -12px; /* 让尾巴连到小熊 */
+    border-width: 10px 12px 10px 0;
+    border-style: solid;
+    border-color: transparent #fff transparent transparent;
+}
+
+/* 淡入的动画效果 */
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+```
+
+到这里为止，纯视觉上的效果就设计完了。
+
+## 动态效果和前后端交互
+
+接下来需要在 HTML 文件里使用 \<script> 标签，定义一些动态效果，以及前后端的交互逻辑。
+
+动态效果如下：
+
+```javascript
+// 用户输入框自动根据行数调整高度
+function autoResize(textarea) {
+    console.log('autoResize function called');
+    textarea.style.height = 'auto';
+    textarea.style.height = textarea.scrollHeight + 'px';
+    
+    // 限制最大高度
+    if (textarea.scrollHeight > 200) {
+        textarea.style.height = '200px';
+        textarea.style.overflowY = 'auto';
+    } else {
+        textarea.style.overflowY = 'hidden';
+    }
+}
+
+// 页面加载时初始化
+document.addEventListener('DOMContentLoaded', function() {
+    const textarea = document.getElementById('question-input');
+    if (textarea) {
+        // 初始调整一次高度
+        setTimeout(() => autoResize(textarea), 100);
+    }
+});
+```
+
+然后来到重头戏，就是 askAI() 和 callAIApi() 这两个函数的逻辑。
+
+askAI() 函数处理了大部分逻辑，包括接收用户的提问、加载时的动效、调用 callAIApi 去触发 HTTP 响应、处理流式传输响应的展示。一些指标也可以在这里记录抓取，比如延迟。流式响应的效果就是 AI 一边生成、页面一边陆续展示已经生成的部分，不必等到全部生成完回答再一次性展示，这样能减少用户的等待时间。但流式响应的处理逻辑也比整段 response 直接输出要复杂很多，需要按行去解析文本；响应格式也从 JSON 变成了 StreamingResponse。
+
+```javascript
+async function askAI() {
+    const startTime = performance.now();  // 用户点击时间
+    const question = document.getElementById('question-input').value.trim(); // 获取用户的问题
+    const responseContainer = document.getElementById('api-response-container');
+    const responseContent = document.getElementById('api-response-content');
+    const placeholder = document.getElementById('placeholder');   // 先获取小熊，为了响应出来后隐藏小熊
+    const realResponse = document.getElementById('real-response'); // 获取响应框
+    responseContent.innerHTML = ""; // 清空之前内容
+    
+    if (!question) {
+        alert('请输入问题'); // 如果问题框为空就按发送，有报错提示
+        return;
+    } 
+    
+    // 点击发送后：隐藏小熊，显示响应框
+    placeholder.classList.add('hidden');
+    realResponse.classList.remove('hidden');
+    realResponse.classList.add('visible');
+    
+    // 显示加载状态
+    responseContent.innerHTML = '<div class="loading">思考中...</div>';
+    responseContent.classList.add('loading');
+    
+    // 禁用按钮防止重复提交
+    const sendButton = document.querySelector('.inline-button');
+    const originalText = sendButton.textContent;
+    sendButton.textContent = '思考中...';
+    sendButton.disabled = true;
+    
+    try {
+        // 调用真实的API
+        const response = await callAIApi(question); // callAIApi 是发送 API 请求的函数，后面有详细定义
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder("utf-8");
+
+        // 移除加载状态
+        responseContent.classList.remove('loading');
+        responseContent.innerHTML = "";
+
+        // 显示API返回的内容，用流式响应的逻辑来处理
+        let done = false;
+        let buffer = "";
+        let fullAnswer = "";
+        while (true) {
+            const { value, done } = await reader.read();
+            if (done) break;
+            const chunk = decoder.decode(value, { stream: true });
+            buffer += chunk;
+
+            // SSE 按行处理
+            let lines = buffer.split(/\r?\n/); // 按照换行符来切分句子
+            buffer = lines.pop(); // 最后一行可能不完整，保留到下一轮
+
+            for (let line of lines) {
+                line = line.trim();
+                if (!line) continue;
+                if (line === "data: [DONE]") continue;
+
+                if (line.startsWith("data: ")) {
+                    const jsonStr = line.slice(6);
+                    try {
+                        const parsed = JSON.parse(jsonStr);
+                        const content = parsed.choices?.[0]?.delta?.content;
+                        if (content) {
+                            fullAnswer += content; // fullAnswer 是用于在 Grafana 里记录回答历史和计算延迟
+                            // 直接更新内容并应用动画
+                            updateContentWithAnimation(responseContent, fullAnswer);
+                        }
+                    } catch (e) {
+                        // 这里只是日志，下一轮继续拼接
+                        console.warn("解析 chunk 错误:", e, jsonStr);
+                    }
+                }
+            }
+        }
+
+        const endTime = performance.now();         // 记录响应返回时间
+        const latencyMs = Math.round(endTime - startTime); // 计算耗时（毫秒）
+        console.log(`本次耗时: ${latencyMs} ms`);
+
+        // 发送给后端延时的数据
+        await fetch('https://api.bearlybear.com/api/record_latency', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ question, answer: fullAnswer, latency_ms: latencyMs })
+        });
+        
+    } catch (error) {
+        responseContent.classList.remove('loading');
+        responseContent.innerHTML = `
+            <div class="error">
+                <p>出错啦: ${error.message}</p>
+                <p>请稍后重试或检查网络连接</p>
+            </div>
+        `;
+    } finally {
+        // 恢复按钮状态
+        sendButton.textContent = originalText;
+        sendButton.disabled = false;
+    }
+}
+```
+
+关于流式输出，这里值得单独写一下。在处理这个逻辑的时候遇到了很多报错，还曾经在页面上误展示过很多带标签对的 token 出来。要注意修改几个地方：
+
+1. 后端的 app.py 里调用 API 的接口，需要把 Stream 参数设置为 True。并且在 API 的路由函数里，要把返回类型设置为 StreamingResponse 而非原来的 JSON。
+```python
+def get_ai_response(prompt):
+    # ...
+    data = {
+    "model": "deepseek-chat",  # 根据实际情况选择模型
+    "messages": [{"role": "user", "content": prompt}],
+    "temperature": 0.7,
+    "stream": True
+    }
+
+    try:
+        with requests.post(url, json=data, headers=headers, stream=True, timeout=30) as r:
+            r.raise_for_status()
+            for line in r.iter_lines(decode_unicode=True):
+                if line:
+                    yield line + "\n"  # 每行逐块转发给前端
+    except requests.exceptions.RequestException as e:
+        yield f"data: {json.dumps({'error': f'Deepseek API error: {str(e)}'})}\n\n"
+
+@app.post("/api/ask_stream")
+async def ask_stream(request: QuestionRequest):
+    prompt = request.question
+    return StreamingResponse(get_ai_response(prompt), media_type="text/event-stream")
+```
+
+2. 前端对流式输出的处理格式。见上方的 askAI 函数定义。
+
+遇到的问题一：在调试过程中，某次看到网页返回了很多像这样的结果，带着 SSE 流式输出的原始格式就展示在页面上：
+
+data: {"id":"3eaf3e26-564c-4f5b-a5bf-640f39ed8d87","object":"chat.completion.chunk","created":1759677785,"model":"deepseek-chat","system_fingerprint":"fp_ffc7281d48_prod0820_fp8_kvcache","choices":[{"index":0,"delta":{"content":"好的"},"logprobs":null,"finish_reason":null}]}
+
+实际上这些是 token 级别的 JSON，而不是直接可显示的文本。我在后端把原本的 JSON 的 text/plain 整段返回格式改为了 text/event-stream 之后，每次当后端以 SSE（text/event-stream）发送数据时，HTTP 连接不会立即结束，而是不断推送上面这样以 data 开头的数据流。如果此时不针对这样的数据格式做处理，而是直接对整段字符串（包含 data:、空行、换行符）执行了 JSON.parse()，就会出现这个问题。所以前端的 askAI 里面对流式文本的解析有误。
+
+解决方法是，检测以 data 开头的数据流，把冗余标签剥除，然后读取里面的 content 也就是有效回答的文本。
+
+```javascript
+// SSE 按行处理
+let lines = buffer.split(/\r?\n/); // 按照换行符来切分句子
+buffer = lines.pop(); // 最后一行可能不完整，保留到下一轮
+
+for (let line of lines) {
+    line = line.trim();
+    if (!line) continue;
+    if (line === "data: [DONE]") continue;
+
+    if (line.startsWith("data: ")) {
+        const jsonStr = line.slice(6); 
+        try {
+            const parsed = JSON.parse(jsonStr);
+            const content = parsed.choices?.[0]?.delta?.content;
+        ...}
+```
+
+遇到的问题二：出现了回答漏字的情况，可以明显看到语言不连贯，一些字缺失了。页面 F12 控制台中有如下报错：
+
+```console
+解析 chunk 错误: SyntaxError: Expected ':' after property name...解析 chunk 错误: SyntaxError: Unterminated string in JSON at position 167 (line 1 column 168) at JSON.parse (<anonymous>) at askAI (ai-chat/:420:45) data: {"id":"04d88ed3-bae9-42eb-8cfd-4780be317940","object":"chat.completion.chunk","created":1759679644,"model":"deepseek-chat","system_fingerprint":"fp_ffc7281d48_prod0820 askAI @ ai-chat/:427 ai-chat/:427
+```
+
+这是因为 DeepSeek SSE 流是逐行发送 JSON 块，以换行符 \n 作为结尾。然而在 HTTP/1.1 的分块传输编码（Chunked Transfer Encoding）机制中，当服务器以流的方式返回响应时（比如 Content-Type: text/event-stream），HTTP 不再提前声明 Content-Length，而是把响应拆成一段一段的 chunk 传输。每个 chunk 的大小和边界由底层 TCP 连接决定，而不是应用层（FastAPI 或前端）能控制的。所以，每个 chunk 的边界是任意的，一条 data 可能被截断，而此时还没有到达 SSE 协议中每条消息的换行符 \n 结尾，因此这条 data 后面未完的内容可能就被抛弃了，下一次读取的时候又从最新的 data 开始。而在每次 read 读到数据就直接 JSON.parse 解析成了 line，此时每个 line 有可能只是一部分 JSON 对象，所以导致漏掉了一些字。
+
+修改思路是，每次 reader.read() 读到一个 chunk，先不要去 parse，而是先把它 decode() 成字符串。然后，增加一个 buffer 缓冲区处理，如果 line 只是一部分 JSON（被截断了），就先保存在 buffer，等下一次 read chunk 再拼接成完整 JSON。遇到 data: [DONE] 表示流结束。
+
+```javascript
+let done = false;
+let buffer = "";
+let fullAnswer = "";
+while (true) {
+    const { value, done } = await reader.read(); // 异步读取流的一小段数据
+    if (done) break;
+    const chunk = decoder.decode(value, { stream: true }); // 把字节流转为 UTF-8 字符串
+    buffer += chunk; // 拼接当前数据块到缓存。
+
+    // SSE 按行处理
+    let lines = buffer.split(/\r?\n/); // 按照换行符来切分句子
+    buffer = lines.pop(); // 最后一行可能不完整，保留到下一轮
+
+    // 再接逐行解析的逻辑
+```
+
 （未完待续）
