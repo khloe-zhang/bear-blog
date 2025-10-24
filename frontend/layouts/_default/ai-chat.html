@@ -155,9 +155,11 @@ async function askAI() {
                         const content = parsed.choices?.[0]?.delta?.content;
                         if (content) {
                             fullAnswer += content;
-                            // responseContent.innerHTML = fullAnswer; 尝试逐行淡入，这行先注释掉
+                            // 实时格式化并更新显示
+                            const formattedContent = formatStreamingMarkdown(fullAnswer);
+                            responseContent.innerHTML = formattedContent;
                             // 直接更新内容并应用动画
-                            updateContentWithAnimation(responseContent, fullAnswer);
+                            updateContentWithAnimation(responseContent, formattedContent);
                         }
                     } catch (e) {
                         // 这里只是日志，下一轮继续拼接
@@ -253,6 +255,22 @@ function formatResponse(text) {
 }
 </script>
 
+<script>
+function formatStreamingMarkdown(text) {
+    let formatted = text;
+    
+    // 1. 换行处理
+    formatted = formatted.replace(/\n/g, '<br>');
+    
+    // 2. 智能粗体处理 - 只处理成对的 **
+    formatted = formatted.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+    
+    // 3. 智能斜体处理 - 只处理成对的 *
+    formatted = formatted.replace(/\*(.*?)\*/g, '<em>$1</em>');
+  
+    return formatted;
+}
+</script>
 
 <script>
 // 清空响应内容
