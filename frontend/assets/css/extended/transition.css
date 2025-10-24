@@ -197,6 +197,7 @@ button#theme-toggle {
     min-height: 100px;
     line-height: 1.6;
     color: #333;
+    white-space: pre-wrap;
 }
 
 .response-container.visible {
