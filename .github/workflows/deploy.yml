@@ -34,7 +34,22 @@ jobs:
           aws s3 sync frontend/public/ s3://${{ secrets.S3_BUCKET }} \
           --cache-control "public, max-age=86400, must-revalidate" \
           --delete
+          # ↓ 新增这行，同步 markdown 到私有 bucket
+          aws s3 sync frontend/content/ s3://${{ secrets.S3_BUCKET }}/blog-content/ --delete
 
       - name: Invalidate CloudFront cache
         run: |
           aws cloudfront create-invalidation --distribution-id ${{ secrets.DISTRIBUTION_ID }} --paths "/*"
+
+      - name: Sync markdown to EC2 and reindex
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            # 同步 markdown 文件到 EC2 本地目录
+            aws s3 sync s3://${{ secrets.S3_BUCKET }}/blog-content/ \
+              /home/ubuntu/ai-blog-api/rag_documents/blog/ --delete
+            # 触发知识库重建
+            curl -s -X POST http://localhost:8000/api/reindex
