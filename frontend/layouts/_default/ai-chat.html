@@ -195,15 +195,11 @@ async function askAI() {
     }
 }
 
-// 更新内容并添加动画，这是为了逐行淡入效果新加的
+// 更新内容 - 流式场景下直接更新，不做动画避免跳动
+// 动画只留给最终完成时的整体淡入效果
 function updateContentWithAnimation(container, content) {
     container.innerHTML = content;
-    container.classList.add('content-update');
-    
-    // 移除动画类，以便下次可以重新触发
-    setTimeout(() => {
-        container.classList.remove('content-update');
-    }, 300);
+    // 流式更新时不再触发动画，防止文字跳动
 }
 
 // 小熊完全加载后再显示
